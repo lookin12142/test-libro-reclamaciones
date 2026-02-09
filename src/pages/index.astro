@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { ComplaintForm } from '../components/complaint-form';
+---
+
+<Layout title="Libro de Reclamaciones">
+	<main class="min-h-screen bg-background">
+		<!-- Decorative top bar -->
+		<div class="h-1.5 bg-primary" />
+		<ComplaintForm client:load />
+	</main>
+</Layout>
