@@ -4,13 +4,12 @@ import react from '@astrojs/react';
 import tailwind from '@astrojs/tailwind';
 import node from '@astrojs/node';
 
-// https://astro.build/config
 export default defineConfig({
-  output: 'server',
-  adapter: node({
-    mode: 'standalone'
-  }),
+  site: 'https://lookin12142.github.io',
+  base: '/test-libro-reclamaciones/',
+
   integrations: [react(), tailwind()],
+
   server: {
     port: 3000
   }

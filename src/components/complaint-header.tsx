@@ -49,7 +49,7 @@ export function ComplaintHeader() {
 
         {/* Mascot */}
         <img
-          src="/images/mascot-large.svg"
+          src="images/mascot-large.svg"
           alt="Mascota del libro de reclamaciones"
           width={110}
           height={115}
