@@ -387,7 +387,7 @@ export function ComplaintForm() {
       {/* Footer */}
       <footer className="mt-8 flex flex-col items-center gap-4 text-center">
         <img
-          src="/images/mascot-large.svg"
+          src="images/mascot-large.svg"
           alt="Mascota decorativa"
           width={50}
           height={52}
