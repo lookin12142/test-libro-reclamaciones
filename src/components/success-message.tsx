@@ -3,15 +3,15 @@ import { Button } from "./ui/button"
 
 interface SuccessMessageProps {
   onReset: () => void
+  numeroExpediente?: string
 }
 
-export function SuccessMessage({ onReset }: SuccessMessageProps) {
-  const claimNumber = `REC-${Date.now().toString().slice(-8)}`
+export function SuccessMessage({ onReset, numeroExpediente }: SuccessMessageProps) {
+  const claimNumber = numeroExpediente || `REC-${Date.now().toString().slice(-8)}`
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 md:py-24">
       <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 text-center shadow-sm md:p-12">
-        {/* Success animation circle */}
         <div className="relative mb-6">
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-green-50 ring-4 ring-green-100">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">

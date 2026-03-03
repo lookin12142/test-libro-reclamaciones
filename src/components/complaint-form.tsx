@@ -65,14 +65,63 @@ export function ComplaintForm() {
   const [documentType, setDocumentType] = useState("")
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [subscriptionPlan, setSubscriptionPlan] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [numeroExpediente, setNumeroExpediente] = useState<string>("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files)
+      setSelectedFiles(filesArray)
+    }
+  }
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setSubmitted(true)
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const formData = new FormData(e.currentTarget)
+      
+      // Agregar archivos si existen
+      selectedFiles.forEach(file => {
+        formData.append('files', file)
+      })
+
+      const response = await fetch('/api/complaints', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al enviar la reclamación')
+      }
+
+      // Guardar el número de expediente para mostrarlo
+      setNumeroExpediente(result.data.complaint.numero_expediente)
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar la reclamación')
+      console.error('Error submitting complaint:', err)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (submitted) {
-    return <SuccessMessage onReset={() => setSubmitted(false)} />
+    return <SuccessMessage onReset={() => {
+      setSubmitted(false)
+      setNumeroExpediente("")
+      setSelectedFiles([])
+    }} numeroExpediente={numeroExpediente} />
   }
 
   return (
@@ -93,6 +142,20 @@ export function ComplaintForm() {
         </p>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-destructive/50 bg-destructive/10 p-4">
+          <div className="mt-0.5 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <p className="text-sm leading-relaxed text-destructive">{error}</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-8 space-y-6">
         {/* Section 1: Personal Data */}
         <SectionCard
@@ -103,16 +166,16 @@ export function ComplaintForm() {
         >
           <div className="grid gap-5 md:grid-cols-2">
             <FormField label="Nombres" htmlFor="nombres" required>
-              <Input id="nombres" placeholder="Ingrese sus nombres" required className="bg-background" />
+              <Input id="nombres" name="nombres" placeholder="Ingrese sus nombres" required className="bg-background" />
             </FormField>
             <FormField label="Apellidos" htmlFor="apellidos" required>
-              <Input id="apellidos" placeholder="Ingrese sus apellidos" required className="bg-background" />
+              <Input id="apellidos" name="apellidos" placeholder="Ingrese sus apellidos" required className="bg-background" />
             </FormField>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <FormField label="Tipo de Documento" htmlFor="tipo-doc" required>
-              <Select value={documentType} onValueChange={setDocumentType} required>
+              <Select value={documentType} onValueChange={setDocumentType} name="tipo_documento" required>
                 <SelectTrigger id="tipo-doc" className="bg-background">
                   <SelectValue placeholder="Seleccione" />
                 </SelectTrigger>
@@ -123,28 +186,29 @@ export function ComplaintForm() {
                   <SelectItem value="ruc">RUC</SelectItem>
                 </SelectContent>
               </Select>
+              <input type="hidden" name="tipo_documento" value={documentType} />
             </FormField>
             <FormField label="Numero de Documento" htmlFor="num-doc" required>
-              <Input id="num-doc" placeholder="Ej: 12345678" required className="bg-background" />
+              <Input id="num-doc" name="numero_documento" placeholder="Ej: 12345678" required className="bg-background" />
             </FormField>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <FormField label="Correo Electronico" htmlFor="email" required>
-              <Input id="email" type="email" placeholder="correo@ejemplo.com" required className="bg-background" />
+              <Input id="email" name="email" type="email" placeholder="correo@ejemplo.com" required className="bg-background" />
             </FormField>
             <FormField label="Telefono" htmlFor="telefono" required>
-              <Input id="telefono" type="tel" placeholder="+51 999 999 999" required className="bg-background" />
+              <Input id="telefono" name="telefono" type="tel" placeholder="+51 999 999 999" required className="bg-background" />
             </FormField>
           </div>
 
           <FormField label="Direccion" htmlFor="direccion" required>
-            <Input id="direccion" placeholder="Ingrese su direccion completa" required className="bg-background" />
+            <Input id="direccion" name="direccion" placeholder="Ingrese su direccion completa" required className="bg-background" />
           </FormField>
 
           <div className="grid gap-5 md:grid-cols-3">
             <FormField label="Departamento" htmlFor="departamento">
-              <Select>
+              <Select name="departamento">
                 <SelectTrigger id="departamento" className="bg-background">
                   <SelectValue placeholder="Seleccione" />
                 </SelectTrigger>
@@ -161,19 +225,19 @@ export function ComplaintForm() {
               </Select>
             </FormField>
             <FormField label="Provincia" htmlFor="provincia">
-              <Input id="provincia" placeholder="Provincia" className="bg-background" />
+              <Input id="provincia" name="provincia" placeholder="Provincia" className="bg-background" />
             </FormField>
             <FormField label="Distrito" htmlFor="distrito">
-              <Input id="distrito" placeholder="Distrito" className="bg-background" />
+              <Input id="distrito" name="distrito" placeholder="Distrito" className="bg-background" />
             </FormField>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <FormField label="Empresa / Razon Social" htmlFor="empresa">
-              <Input id="empresa" placeholder="Nombre de su empresa" className="bg-background" />
+              <Input id="empresa" name="empresa" placeholder="Nombre de su empresa" className="bg-background" />
             </FormField>
             <FormField label="RUC de la Empresa" htmlFor="ruc-empresa">
-              <Input id="ruc-empresa" placeholder="Ej: 20123456789" className="bg-background" />
+              <Input id="ruc-empresa" name="ruc_empresa" placeholder="Ej: 20123456789" className="bg-background" />
             </FormField>
           </div>
         </SectionCard>
@@ -225,6 +289,7 @@ export function ComplaintForm() {
                 </div>
               </label>
             </RadioGroup>
+            <input type="hidden" name="tipo_reclamacion" value={complaintType} />
           </FormField>
 
           {/* Subscription info */}
@@ -241,15 +306,16 @@ export function ComplaintForm() {
                   <SelectItem value="personalizado">Plan Personalizado</SelectItem>
                 </SelectContent>
               </Select>
+              <input type="hidden" name="plan_suscripcion" value={subscriptionPlan} />
             </FormField>
             <FormField label="Fecha del Incidente" htmlFor="fecha-incidente" required>
-              <Input id="fecha-incidente" type="date" required className="bg-background" />
+              <Input id="fecha-incidente" name="fecha_incidente" type="date" required className="bg-background" />
             </FormField>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <FormField label="Modulo Afectado" htmlFor="modulo">
-              <Select>
+              <Select name="modulo_afectado">
                 <SelectTrigger id="modulo" className="bg-background">
                   <SelectValue placeholder="Seleccione el modulo" />
                 </SelectTrigger>
@@ -272,6 +338,7 @@ export function ComplaintForm() {
             <FormField label="Detalle de la Reclamacion" htmlFor="detalle" required>
               <Textarea
                 id="detalle"
+                name="detalle_reclamacion"
                 placeholder="Describa con detalle lo sucedido: que funcionalidad fallo, que error aparecio, como afecto su operacion, etc."
                 rows={5}
                 required
@@ -282,6 +349,7 @@ export function ComplaintForm() {
             <FormField label="Solucion Esperada" htmlFor="pedido" required>
               <Textarea
                 id="pedido"
+                name="solucion_esperada"
                 placeholder="Indique la solucion que espera: reembolso, correccion del servicio, compensacion, etc."
                 rows={3}
                 required
@@ -299,42 +367,79 @@ export function ComplaintForm() {
           icon={<FileTextIcon />}
         >
           <FormField label="Adjuntar Evidencia (opcional)" htmlFor="evidencia">
-            <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-border bg-background px-6 py-8 transition-colors hover:border-primary/40">
-              <div className="text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto text-muted-foreground">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" x2="12" y1="3" y2="15" />
-                </svg>
-                <p className="mt-2 text-sm font-medium text-card-foreground">
-                  Arrastre capturas de pantalla u otros archivos aqui
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  PDF, JPG, PNG hasta 10MB
-                </p>
-                <input
-                  id="evidencia"
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  multiple
-                  className="sr-only"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 bg-transparent"
-                  onClick={() => document.getElementById("evidencia")?.click()}
-                >
-                  Seleccionar Archivos
-                </Button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-border bg-background px-6 py-8 transition-colors hover:border-primary/40">
+                <div className="text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto text-muted-foreground">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" x2="12" y1="3" y2="15" />
+                  </svg>
+                  <p className="mt-2 text-sm font-medium text-card-foreground">
+                    Arrastre capturas de pantalla u otros archivos aqui
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    PDF, JPG, PNG hasta 10MB
+                  </p>
+                  <input
+                    id="evidencia"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                    multiple
+                    onChange={handleFileChange}
+                    className="sr-only"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 bg-transparent"
+                    onClick={() => document.getElementById("evidencia")?.click()}
+                  >
+                    Seleccionar Archivos
+                  </Button>
+                </div>
               </div>
+              
+              {/* Lista de archivos seleccionados */}
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Archivos seleccionados:</p>
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span className="text-sm truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 ml-2 shrink-0"
+                        onClick={() => removeFile(index)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </FormField>
 
           <FormField label="Observaciones Adicionales" htmlFor="observaciones">
             <Textarea
               id="observaciones"
+              name="observaciones"
               placeholder="Cualquier informacion adicional que desee agregar sobre su experiencia con el software..."
               rows={3}
               className="bg-background resize-none"
@@ -374,11 +479,23 @@ export function ComplaintForm() {
             <Button
               type="submit"
               size="lg"
-              disabled={!acceptedTerms}
+              disabled={!acceptedTerms || isSubmitting}
               className="w-full gap-2 sm:w-auto"
             >
-              <SendIcon />
-              Enviar Reclamacion
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <SendIcon />
+                  Enviar Reclamacion
+                </>
+              )}
             </Button>
           </div>
         </div>
